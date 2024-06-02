@@ -15,7 +15,7 @@ from app.upload import convert_ingestion_input_to_blob, ingest_runnable
 
 logger = structlog.get_logger(__name__)
 
-app = FastAPI(title="OpenGPTs API", lifespan=lifespan)
+app = FastAPI(title="BB Assistants API", lifespan=lifespan)
 
 
 # Get root of app, used to point to directory containing static files

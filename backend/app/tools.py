@@ -58,6 +58,7 @@ class AvailableTools(str, Enum):
     PUBMED = "pubmed"
     WIKIPEDIA = "wikipedia"
     DALL_E = "dall_e"
+    ADEPT_ID = "adept_id"
 
 
 class ToolConfig(TypedDict):
