@@ -24,7 +24,7 @@ from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langchain_core.tools import Tool
 from langchain_robocorp import ActionServerToolkit
 from typing_extensions import TypedDict
-from brightbot_adeptid import AdeptIDToolkit
+#from bbtools.adeptid import AdeptIDToolkit
 
 from app.upload import vstore
 
@@ -59,7 +59,7 @@ class AvailableTools(str, Enum):
     PUBMED = "pubmed"
     WIKIPEDIA = "wikipedia"
     DALL_E = "dall_e"
-    ADEPT_ID = "adept_id"
+    ADEPTID = "adeptid"
 
 
 class ToolConfig(TypedDict):
@@ -329,7 +329,8 @@ def _get_dalle_tools():
     )
 
 def _get_adeptID_tools(**kwargs: ActionServerConfig):
-    toolkit = AdeptIDToolkit(url=kwargs["url"], api_key=kwargs["api_key"])
+    #toolkit = AdeptIDToolkit(url=kwargs["url"], api_key=kwargs["api_key"])
+    toolkit = ActionServerToolkit(url=kwargs["url"], api_key=kwargs["api_key"])
     tools = toolkit.get_tools()
     return tools
 
