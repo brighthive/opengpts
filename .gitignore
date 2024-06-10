@@ -16,6 +16,9 @@ __pycache__/
 .venv/
 *.egg-info/
 dist/
+/backend/.venv/
+venv/
+opengpts-py3.10/
 
 # Node.js / frontend artifacts
 node_modules/

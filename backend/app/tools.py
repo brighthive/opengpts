@@ -24,6 +24,7 @@ from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langchain_core.tools import Tool
 from langchain_robocorp import ActionServerToolkit
 from typing_extensions import TypedDict
+from brightbot_adeptid import AdeptIDToolkit
 
 from app.upload import vstore
 
@@ -89,6 +90,24 @@ class ActionServer(BaseTool):
         const=True,
     )
     config: ActionServerConfig
+    multi_use: bool = Field(True, const=True)
+
+
+class AdeptIDConfig(ToolConfig):
+    url: str
+    api_key: str
+
+class AdeptID(BaseTool):
+    type: AvailableTools = Field(AvailableTools.ADEPTID, const=True)
+    name: str = Field("AdeptID API", const=True)
+    description: str = Field(
+        (
+            "Get personalized career paths and job recommendations from"
+            "[AdeptID](https://adeptid.com)"
+        ),
+        const=True
+    )
+    config: AdeptIDConfig
     multi_use: bool = Field(True, const=True)
 
 
@@ -309,6 +328,10 @@ def _get_dalle_tools():
         "A wrapper around OpenAI DALL-E API. Useful for when you need to generate images from a text description. Input should be an image description.",
     )
 
+def _get_adeptID_tools(**kwargs: ActionServerConfig):
+    toolkit = AdeptIDToolkit(url=kwargs["url"], api_key=kwargs["api_key"])
+    tools = toolkit.get_tools()
+    return tools
 
 TOOLS = {
     AvailableTools.ACTION_SERVER: _get_action_server,
@@ -323,4 +346,5 @@ TOOLS = {
     AvailableTools.WIKIPEDIA: _get_wikipedia,
     AvailableTools.TAVILY_ANSWER: _get_tavily_answer,
     AvailableTools.DALL_E: _get_dalle_tools,
+    AvailableTools.ADEPTID: _get_adeptID_tools,
 }

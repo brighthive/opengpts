@@ -1,0 +1,8 @@
+name: bb-assistants
+runtime:
+  name: python
+  options:
+    virtualenv: backend/.venv
+description: A service for running custom assistants within brighthive workspaces for allowing external users to interact with workspace data and tools.
+config: 
+  aws:region: us-west-1
