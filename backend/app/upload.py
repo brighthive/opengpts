@@ -31,7 +31,6 @@ from app.parsing import MIMETYPE_BASED_PARSER
 from dotenv import load_dotenv
 import os
 
-#dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
@@ -153,7 +152,7 @@ class IngestRunnable(RunnableSerializable[BinaryIO, List[str]]):
 
 PG_CONNECTION_STRING = PGVector.connection_string_from_db_params(
     driver="psycopg2",
-    host="postgres",#os.environ["POSTGRES_HOST"],
+    host=os.environ["POSTGRES_HOST"],
     port=int(os.environ["POSTGRES_PORT"]),
     database=os.environ["POSTGRES_DB"],
     user=os.environ["POSTGRES_USER"],
