@@ -16,6 +16,10 @@ import pulumi
 import json
 import pulumi_aws as aws
 import pulumi_docker as docker
+from dotenv import load_dotenv
+
+# Load environment variables from the .env file
+load_dotenv()
 
 config = pulumi.Config()
 
@@ -393,7 +397,7 @@ langserve_task_definition = aws.ecs.TaskDefinition("langserve-task-definition",
             "logDriver": "awslogs",
             "options": {
                 "awslogs-group": args[2],
-                "awslogs-region": "us-east-1",
+                "awslogs-region": "us-west-1",
                 "awslogs-stream-prefix": "pulumi-langserve",
             },
         },
