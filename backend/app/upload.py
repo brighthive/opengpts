@@ -28,6 +28,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitte
 from app.ingest import ingest_blob
 from app.parsing import MIMETYPE_BASED_PARSER
 
+from dotenv import load_dotenv
+import os
+
+#dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path)
+
 
 def _guess_mimetype(file_name: str, file_bytes: bytes) -> str:
     """Guess the mime-type of a file based on its name or bytes."""
@@ -146,7 +153,7 @@ class IngestRunnable(RunnableSerializable[BinaryIO, List[str]]):
 
 PG_CONNECTION_STRING = PGVector.connection_string_from_db_params(
     driver="psycopg2",
-    host=os.environ["POSTGRES_HOST"],
+    host="postgres",#os.environ["POSTGRES_HOST"],
     port=int(os.environ["POSTGRES_PORT"]),
     database=os.environ["POSTGRES_DB"],
     user=os.environ["POSTGRES_USER"],
@@ -170,3 +177,6 @@ ingest_runnable = IngestRunnable(
         name="Thread ID",
     ),
 )
+
+if __name__ == "__main__":
+    print("dotenv_path: ", dotenv_path)
