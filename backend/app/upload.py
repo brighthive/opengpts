@@ -176,6 +176,3 @@ ingest_runnable = IngestRunnable(
         name="Thread ID",
     ),
 )
-
-if __name__ == "__main__":
-    print("dotenv_path: ", dotenv_path)
