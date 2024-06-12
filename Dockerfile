@@ -8,7 +8,7 @@ RUN yarn --network-timeout 600000 --frozen-lockfile
 
 COPY ./frontend ./
 
-RUN rm -rf .env
+# RUN rm -rf .env
 
 RUN yarn build
 
@@ -27,6 +27,9 @@ RUN wget -O golang-migrate.deb https://github.com/golang-migrate/migrate/release
 
 # Install Poetry
 RUN pip install poetry
+
+# Copy th environment file
+COPY .env ./backend/app/.env
 
 # Set the working directory
 WORKDIR /backend

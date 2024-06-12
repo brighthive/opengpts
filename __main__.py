@@ -16,6 +16,10 @@ import pulumi
 import json
 import pulumi_aws as aws
 import pulumi_docker as docker
+from dotenv import load_dotenv
+
+# Load environment variables from the .env file
+load_dotenv()
 
 config = pulumi.Config()
 
@@ -156,6 +160,12 @@ langserve_cluster_capacity_providers = aws.ecs.ClusterCapacityProviders("langser
 langserve_security_group = aws.ec2.SecurityGroup("langserve-security-group",
     vpc_id=langserve_vpc.id,
     ingress=[aws.ec2.SecurityGroupIngressArgs(
+        protocol="tcp",
+        from_port=5432,
+        to_port=5432,
+        cidr_blocks=["0.0.0.0/0"],
+    ),
+    aws.ec2.SecurityGroupIngressArgs(
         protocol="tcp",
         from_port=80,
         to_port=80,
@@ -314,6 +324,53 @@ langserve_execution_role = aws.iam.Role("langserve-execution-role",
     )],
     managed_policy_arns=["arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"])
 
+database_security_group = aws.ec2.SecurityGroup(
+    "rds-sg",
+    vpc_id=langserve_vpc.id,
+    ingress=[{
+        "protocol": "tcp",
+        "from_port": 5432,
+        "to_port": 5432,
+        "cidr_blocks": ["0.0.0.0/0"]
+    }],
+    egress=[{
+        "protocol": "-1",
+        "from_port": 0,
+        "to_port": 0,
+        "cidr_blocks": ["0.0.0.0/0"]
+    }]
+)
+
+langserve_database_cluster = aws.rds.Cluster(
+    "langserve-database",
+    engine=aws.rds.EngineType.AURORA_POSTGRESQL,
+    engine_mode=aws.rds.EngineMode.PROVISIONED,
+    engine_version="15.6",
+    database_name=os.environ["POSTGRES_DB"],
+    master_username=os.environ["POSTGRES_USER"],
+    master_password=os.environ["POSTGRES_PASSWORD"],
+    storage_encrypted=True,
+    serverlessv2_scaling_configuration=aws.rds.ClusterServerlessv2ScalingConfigurationArgs(
+        max_capacity=1,
+        min_capacity=0.5,
+    ),
+    vpc_security_group_ids=[database_security_group.id],
+    db_subnet_group_name=aws.rds.SubnetGroup("langserve-subnet-group",
+        subnet_ids=[langserve_subnet1, langserve_subnet2],
+        tags={
+            "Name": "langserve-subnet-group"
+        }).name,
+    skip_final_snapshot=True,
+)
+
+langserve_cluster_instance = aws.rds.ClusterInstance(
+    "langserve-cluster-instance",
+    cluster_identifier=langserve_database_cluster.id,
+    instance_class="db.serverless",
+    engine=langserve_database_cluster.engine,
+    engine_version=langserve_database_cluster.engine_version,
+)
+
 langserve_task_role = aws.iam.Role("langserve-task-role",
     assume_role_policy=json.dumps({
         "Statement": [{
@@ -374,7 +431,16 @@ langserve_task_definition = aws.ecs.TaskDefinition("langserve-task-definition",
     execution_role_arn=langserve_execution_role.arn,
     task_role_arn=langserve_task_role.arn,
     requires_compatibilities=["FARGATE"],
-    container_definitions=pulumi.Output.all(langserve_ecr_image.repo_digest, langserve_ssm_parameter.name, langserve_log_group.name).apply(lambda args: json.dumps([{
+    container_definitions=pulumi.Output.all(
+        langserve_ecr_image.repo_digest, 
+        langserve_ssm_parameter.name, 
+        langserve_log_group.name,
+        langserve_cluster_instance.endpoint,
+        langserve_cluster_instance.port,
+        langserve_database_cluster.database_name,
+        langserve_database_cluster.master_username,
+        langserve_database_cluster.master_password
+    ).apply(lambda args: json.dumps([{
         "name": f"{pulumi_project}-{pulumi_stack}-service",
         "image": args[0],
         "cpu": 0,
@@ -389,23 +455,32 @@ langserve_task_definition = aws.ecs.TaskDefinition("langserve-task-definition",
             "name": "OPENAI_API_KEY",
             "valueFrom": args[1],
         }],
+        "environment": [
+            {"name": "POSTGRES_HOST", "value": args[3]},
+            {"name": "POSTGRES_PORT", "value": str(args[4])},
+            {"name": "POSTGRES_DB", "value": str(args[5])},
+            {"name": "POSTGRES_USER", "value": args[6]},
+            {"name": "POSTGRES_PASSWORD", "value": args[7]}
+        ],
         "logConfiguration": {
             "logDriver": "awslogs",
             "options": {
                 "awslogs-group": args[2],
-                "awslogs-region": "us-east-1",
+                "awslogs-region": "us-west-1",
                 "awslogs-stream-prefix": "pulumi-langserve",
             },
         },
     }])))
 langserve_ecs_security_group = aws.ec2.SecurityGroup("langserve-ecs-security-group",
     vpc_id=langserve_vpc.id,
-    ingress=[aws.ec2.SecurityGroupIngressArgs(
-        protocol="-1",
-        from_port=0,
-        to_port=0,
-        cidr_blocks=["0.0.0.0/0"],
-    )],
+    ingress=[
+        aws.ec2.SecurityGroupIngressArgs(
+            protocol="-1",
+            from_port=0,
+            to_port=0,
+            cidr_blocks=["0.0.0.0/0"],
+        ),
+    ],
     egress=[aws.ec2.SecurityGroupEgressArgs(
         protocol="-1",
         from_port=0,
