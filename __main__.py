@@ -517,6 +517,70 @@ langserve_service = aws.ecs.Service("langserve-service",
         "Name": f"{pulumi_project}-{pulumi_stack}",
     })
 
+# Define the IAM role for the Lambda function
+sql_migration_lambda_role = aws.iam.Role("langserve-lambda-role",
+    assume_role_policy="""{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "sts:AssumeRole",
+            "Principal": {
+                "Service": "lambda.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": ""
+        }
+    ]
+    }""")
+
+sql_migration_lambda_policy = aws.iam.RolePolicy(
+    "langserve-lambda-policy",
+    role=sql_migration_lambda_role.id,
+    policy="""{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "rds:*",
+                "logs:*",
+                "cloudwatch:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+    }""")
+
+
+aws.iam.RolePolicyAttachment(
+    "lambda-vpc-access-execution-role-attachment",
+    role=sql_migration_lambda_role.name,
+    policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+)
+
+# Define the Lambda function with VPC configuration
+sql_migration_lambda_function = aws.lambda_.Function(
+    'sql-migrations-lambda-function',
+    code=pulumi.FileArchive('./backend/sql/'),
+    runtime='python3.11',
+    role=sql_migration_lambda_role.arn,
+    handler='sql_migration_lambda_function.lambda_handler',
+    environment=aws.lambda_.FunctionEnvironmentArgs(
+        variables={
+            'POSTGRES_HOST': langserve_cluster_instance.endpoint,
+            'POSTGRES_PORT': langserve_cluster_instance.port,
+            'POSTGRES_DB': langserve_database_cluster.database_name,
+            'POSTGRES_USER': langserve_database_cluster.master_username,
+            'POSTGRES_PASSWORD': langserve_database_cluster.master_password
+        }
+    ),
+    vpc_config=aws.lambda_.FunctionVpcConfigArgs(
+        subnet_ids=[langserve_subnet1.id, langserve_subnet2.id],
+        security_group_ids=[database_security_group.id]
+    ),
+    opts=pulumi.ResourceOptions(depends_on=[langserve_cluster_instance])
+)
+
 
 # Route53
 hosted_zone = aws.route53.get_zone(name=domain_name)
