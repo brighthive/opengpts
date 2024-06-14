@@ -64,4 +64,5 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Temp Lambda files:
-/backend/lambda*
+backend/lambda_*
+lambda_*/
