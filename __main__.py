@@ -14,6 +14,9 @@
 import os
 import pulumi
 import json
+import subprocess
+import shutil
+import sys
 import pulumi_aws as aws
 import pulumi_docker as docker
 from dotenv import load_dotenv
@@ -340,7 +343,6 @@ database_security_group = aws.ec2.SecurityGroup(
         "cidr_blocks": ["0.0.0.0/0"]
     }]
 )
-
 langserve_database_cluster = aws.rds.Cluster(
     "langserve-database",
     engine=aws.rds.EngineType.AURORA_POSTGRESQL,
@@ -516,6 +518,89 @@ langserve_service = aws.ecs.Service("langserve-service",
     tags={
         "Name": f"{pulumi_project}-{pulumi_stack}",
     })
+
+# Define the IAM role for the Lambda function
+sql_migration_lambda_role = aws.iam.Role("langserve-lambda-role",
+    assume_role_policy="""{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "sts:AssumeRole",
+            "Principal": {
+                "Service": "lambda.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": ""
+        }
+    ]
+    }""")
+
+sql_migration_lambda_policy = aws.iam.RolePolicy(
+    "langserve-lambda-policy",
+    role=sql_migration_lambda_role.id,
+    policy="""{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "rds:*",
+                "logs:*",
+                "cloudwatch:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+    }""")
+
+
+aws.iam.RolePolicyAttachment(
+    "lambda-vpc-access-execution-role-attachment",
+    role=sql_migration_lambda_role.name,
+    policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+)
+
+FUNCTION_CODE_DIR = "./backend/sql"
+LAMBDA_PACKAGE_DIR = "./lambda_package"
+
+# Clean up any existing package directory
+if os.path.exists(LAMBDA_PACKAGE_DIR):
+    shutil.rmtree(LAMBDA_PACKAGE_DIR)
+
+os.makedirs(LAMBDA_PACKAGE_DIR, exist_ok=True)
+
+# Install psycopg2 into the package directory
+subprocess.check_call(
+    [sys.executable, "-m", "pip", "install", "psycopg2-binary", "-t", LAMBDA_PACKAGE_DIR, "--platform", "manylinux2014_x86_64", "--no-deps", "--only-binary", ":all:"]
+)
+
+# Copy the function code to the package directory
+shutil.copytree(FUNCTION_CODE_DIR, os.path.join(LAMBDA_PACKAGE_DIR, "code"))
+
+# Package the Lambda function and its dependencies
+shutil.make_archive(f"{LAMBDA_PACKAGE_DIR}/lambda_package", 'zip', LAMBDA_PACKAGE_DIR)
+
+sql_migration_lambda_function = aws.lambda_.Function(
+    'sql-migrations-lambda-function',
+    code=pulumi.FileArchive(f"{LAMBDA_PACKAGE_DIR}/lambda_package.zip"),
+    runtime='python3.9',
+    role=sql_migration_lambda_role.arn,
+    handler='code.sql_migration_lambda_function.lambda_handler',
+    environment=aws.lambda_.FunctionEnvironmentArgs(
+        variables={
+            'POSTGRES_HOST': langserve_cluster_instance.endpoint,
+            'POSTGRES_PORT': langserve_cluster_instance.port,
+            'POSTGRES_DB': langserve_database_cluster.database_name,
+            'POSTGRES_USER': langserve_database_cluster.master_username,
+            'POSTGRES_PASSWORD': langserve_database_cluster.master_password
+        }
+    ),
+    vpc_config=aws.lambda_.FunctionVpcConfigArgs(
+        subnet_ids=[langserve_subnet1.id, langserve_subnet2.id],
+        security_group_ids=[database_security_group.id]
+    ),
+    opts=pulumi.ResourceOptions(depends_on=[langserve_cluster_instance])
+)
 
 
 # Route53
