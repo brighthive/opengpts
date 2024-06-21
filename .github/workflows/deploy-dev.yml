@@ -42,7 +42,6 @@ jobs:
       # Run Poetry lock --no-update
       - name: Poetry Lock
         run: |
-          source $GITHUB_ENV
           poetry lock --directory backend --no-update
 
       # Create and activate the virtual environment
