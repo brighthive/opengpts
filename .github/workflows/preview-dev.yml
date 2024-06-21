@@ -1,6 +1,9 @@
 name: Pulumi Preview
 on:
   pull_request:
+    branches:
+      - develop
+    
 jobs:
   preview:
     name: Preview
