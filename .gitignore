@@ -3,6 +3,7 @@
 postgres-volume/
 redis-volume/
 backend/ui
+tests/notebooks
 
 # Operating System generated files
 .DS_Store
