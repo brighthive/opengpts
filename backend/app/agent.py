@@ -27,6 +27,7 @@ from app.tools import (
     RETRIEVAL_DESCRIPTION,
     TOOLS,
     ActionServer,
+    AdeptID,
     Arxiv,
     AvailableTools,
     Connery,
@@ -42,10 +43,14 @@ from app.tools import (
     YouSearch,
     get_retrieval_tool,
     get_retriever,
+    Skillup,
+    Skillup_Jobs,
+    Skillup_Training
 )
 
 Tool = Union[
     ActionServer,
+    AdeptID,
     Connery,
     DDGSearch,
     Arxiv,
@@ -57,6 +62,9 @@ Tool = Union[
     Tavily,
     TavilyAnswer,
     Retrieval,
+    Skillup,
+    Skillup_Jobs,
+    Skillup_Training,
     DallE,
 ]
 

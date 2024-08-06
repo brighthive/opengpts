@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 from typing import List
 import os
 
+ADEPT_ID_API_KEY = os.getenv("ADEPTID_API_KEY")
+
 # Define the input schema for the tool
 class WorkHistory(BaseModel):
     title: str
@@ -26,21 +28,75 @@ class Candidate(BaseModel):
     education: List[Education]
     skills: List[str]
 
-class AdeptIDJobRecommendationInput(BaseModel):
+class AdeptIDSkillSearchInput(BaseModel):
+    skills: List[str]
+    result_count: int = 1
+    offset: int = 1
+
+class AdeptIDDestionationOccupationRecommendationInput(BaseModel):
     candidates: List[Candidate]
     limit: int = 10
     offset: int = 1
-    skill_count: int = 5
+
+class AdeptIDJobRecommendationInput(BaseModel):
+    skill_count: int = 0
+    destination_jobs: List[str]
+    limit: int = 1000
+    offset: int = 0
+
+class AdeptIDSkillSearch(BaseTool):
+    name = "AdeptIDSkillSearch"
+    description = "Searches for skills and returns the top results."
+
+    input = AdeptIDSkillSearchInput
+
+    def _run(self, input: AdeptIDSkillSearchInput):
+        url = "https://api.adept-id.com/v2/skill"
+        api_key = os.getenv("ADEPTID_API_KEY")
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"  # Replace with your actual API key
+        }
+        payload = input.json()
+        #TODO: check whether this is GET or POST
+        response = requests.post(url, headers=headers, data=payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": response.json()}
+
+class AdeptIDDestinationOccupationRecommendation(BaseTool):
+    name = "AdeptIDDestinationOccupationRecommendation"
+    description = "Recommends occupations and career paths to a candidate based on their skills and interests."
+
+    input = AdeptIDDestionationOccupationRecommendationInput
+
+    def _run(self, input: AdeptIDJobRecommendationInput):
+        url = "https://api.adept-id.com/v2/recommend-destination-occupation"
+        api_key = os.getenv("ADEPTID_API_KEY")
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"  # Replace with your actual API key
+        }
+        payload = input.json()
+
+        response = requests.post(url, headers=headers, data=payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": response.json()}
 
 # Define the tool class
 class AdeptIDJobRecommendation(BaseTool):
     name = "AdeptIDJobRecommendation"
-    description = "Recommends next step career opportunities for a specific candidate."
+    description = "Recommends specific jobs for a candidate based on their destination occupation and skills."
 
-    input_model = AdeptIDJobRecommendationInput
+    input = AdeptIDJobRecommendationInput
 
     def _run(self, input: AdeptIDJobRecommendationInput):
-        url = "https://api.adept-id.com/v2/recommend-destination-occupation"
+        url = "https://api.adept-id.com/v2/evaluate-jobs"
         api_key = os.getenv("ADEPTID_API_KEY")
         headers = {
             "Content-Type": "application/json",
@@ -83,6 +139,7 @@ if __name__ == "__main__":
         offset=1,
         skill_count=5
     )
+
 
     result = tool.run(input_data)
     print(result)
