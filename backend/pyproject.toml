@@ -4,7 +4,9 @@ version = "0.1.0"
 description = ""
 authors = ["Matt Gee <you@example.com>"]
 readme = "README.md"
-packages = [{include = "app"}]
+packages = [
+    {include = "backend"}
+    ]
 
 [tool.poetry.dependencies]
 python = "^3.9.0,<3.12"
@@ -48,6 +50,7 @@ pulumi = "^3.117.0"
 pulumi-aws = "^6.37.1"
 pulumi-docker = "^4.5.4"
 python-dotenv = "^1.0.1"
+jupyter = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 uvicorn = "^0.23.2"

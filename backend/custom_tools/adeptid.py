@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List
 import os
 
-ADEPT_ID_API_KEY = 
+ADEPT_ID_API_KEY = os.getenv("ADEPTID_API_KEY")
 
 # Define the input schema for the tool
 class WorkHistory(BaseModel):

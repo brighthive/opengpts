@@ -60,6 +60,9 @@ class AvailableTools(str, Enum):
     WIKIPEDIA = "wikipedia"
     DALL_E = "dall_e"
     ADEPTID = "adeptid"
+    SKILLUP = "skillup"
+    SKILLUP_TRAINING = "skillup_training"
+    SKILLUP_JOBS = "skillup_jobs"
 
 
 class ToolConfig(TypedDict):
@@ -102,7 +105,7 @@ class AdeptID(BaseTool):
     name: str = Field("AdeptID API", const=True)
     description: str = Field(
         (
-            "Get personalized career paths and job recommendations from"
+            "Get personalized career paths and job recommendations from "
             "[AdeptID](https://adeptid.com)"
         ),
         const=True
@@ -179,6 +182,36 @@ class Wikipedia(BaseTool):
         "Searches [Wikipedia](https://pypi.org/project/wikipedia/).", const=True
     )
 
+
+class Skillup(BaseTool):
+    type: AvailableTools = Field(AvailableTools.SKILLUP, const=True)
+    name: str = Field("Skillup", const=True)
+    description: str = Field(
+        (
+        "Searches [Skillup](https://www.skillup.com/)."
+        "This is a tool for skillup training opportunities and jobs"
+        ), 
+        const=True)
+    
+class Skillup_Training(BaseTool):
+    type: AvailableTools = Field(AvailableTools.SKILLUP_TRAINING, const=True)
+    name: str = Field("Skillup Training", const=True)
+    description: str = Field(
+        (
+        "Searches [Skillup](https://www.skillup.com/)."
+        "This is a tool for skillup training opportunities"
+        ), 
+        const=True)
+
+class Skillup_Jobs(BaseTool):
+    type: AvailableTools = Field(AvailableTools.SKILLUP_JOBS, const=True)
+    name: str = Field("Skillup Jobs", const=True)
+    description: str = Field(
+        (
+        "Searches [Skillup](https://www.skillup.com/)."
+        "This is a tool for skillup jobs"
+        ), 
+        const=True)
 
 class Tavily(BaseTool):
     type: AvailableTools = Field(AvailableTools.TAVILY, const=True)
@@ -257,6 +290,10 @@ def _get_you_search():
         "Searches for documents using You.com",
     )
 
+#add retriever tool for skillup training
+
+#add retriever tool for skillup jobs
+
 
 @lru_cache(maxsize=1)
 def _get_sec_filings():
@@ -334,6 +371,16 @@ def _get_adeptID_tools(**kwargs: ActionServerConfig):
     tools = toolkit.get_tools()
     return tools
 
+def _get_skillup_training():
+    return create_retriever_tool(
+        WikipediaRetriever(), "wikipedia", "Search for training and jobs on Wikipedia"
+    )
+
+def _get_skillup_jobs():
+    return create_retriever_tool(
+        WikipediaRetriever(), "wikipedia", "Search for training and jobs on Wikipedia"
+    )
+
 TOOLS = {
     AvailableTools.ACTION_SERVER: _get_action_server,
     AvailableTools.CONNERY: _get_connery_actions,
@@ -348,4 +395,6 @@ TOOLS = {
     AvailableTools.TAVILY_ANSWER: _get_tavily_answer,
     AvailableTools.DALL_E: _get_dalle_tools,
     AvailableTools.ADEPTID: _get_adeptID_tools,
+    AvailableTools.SKILLUP_TRAINING: _get_skillup_training,
+    AvailableTools.SKILLUP_JOBS: _get_skillup_jobs,
 }
